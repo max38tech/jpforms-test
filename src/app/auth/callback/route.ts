@@ -1,14 +1,30 @@
-import { NextResponse } from "next/server";
-import { createServerComponentClient } from "@/lib/supabase/server";
+import { NextResponse, type NextRequest } from "next/server";
+import { createRouteHandlerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  if (code) {
-    const supabase = createServerComponentClient();
-    await supabase.auth.exchangeCodeForSession(code);
+  const errorDescription = requestUrl.searchParams.get("error_description");
+
+  if (errorDescription) {
+    return NextResponse.redirect(
+      new URL(`/login?error=${encodeURIComponent(errorDescription)}`, requestUrl)
+    );
   }
-  return NextResponse.redirect(new URL("/dashboard", requestUrl));
+
+  const response = NextResponse.redirect(new URL("/dashboard", requestUrl));
+
+  if (code) {
+    const supabase = createRouteHandlerClient(request, response);
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      return NextResponse.redirect(
+        new URL(`/login?error=${encodeURIComponent(error.message)}`, requestUrl)
+      );
+    }
+  }
+
+  return response;
 }

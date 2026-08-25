@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/auth-helpers-nextjs";
 import { createClient as createSupabaseClient, SupabaseClient } from "@supabase/supabase-js";
+import type { NextRequest, NextResponse } from "next/server";
 
 /**
  * Build-time safe: Next.js prerenders pages during `next build` even before
@@ -23,6 +24,29 @@ export function createServerComponentClient(): SupabaseClient {
         }
       },
       setAll: () => {},
+    },
+  });
+}
+
+/**
+ * For Route Handlers (e.g. /auth/callback) that need to WRITE session
+ * cookies, not just read them. Server Components can't set cookies (Next.js
+ * forbids it), which is why createServerComponentClient's setAll is a no-op —
+ * but a Route Handler returning a NextResponse can and must, or the session
+ * from exchangeCodeForSession() is silently dropped and the user never
+ * actually gets logged in.
+ */
+export function createRouteHandlerClient(
+  request: NextRequest,
+  response: NextResponse
+): SupabaseClient {
+  return createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    cookies: {
+      getAll: () => request.cookies.getAll(),
+      setAll: (cookiesToSet) =>
+        cookiesToSet.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, options)
+        ),
     },
   });
 }
