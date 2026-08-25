@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 
 const PROVIDERS = [
-  { value: "gemini", label: "Gemini 2.0 Flash" },
+  { value: "gemini", label: "Gemini" },
   { value: "openai", label: "OpenAI GPT-4o-mini" },
   { value: "anthropic", label: "Anthropic Claude 3.5 Haiku" },
   { value: "custom", label: "Custom / Open-Source (OpenAI-compatible)" },
@@ -28,11 +28,9 @@ const CUSTOM_PRESETS = [
   { label: "Ollama (local)", baseUrl: "http://localhost:11434/v1", model: "llama3.1" },
 ];
 
-const SCHEMA_GEMINI_MODELS = [
-  { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash (fast & cheap)" },
-  { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-  { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (highest accuracy, translation quality)" },
-];
+const GEMINI_CHAT_MODEL_PRESETS = ["gemini-2.5-flash", "gemini-3.6-flash", "gemini-2.5-pro"];
+const GEMINI_SCHEMA_MODEL_PRESETS = ["gemini-2.5-flash", "gemini-3.6-flash", "gemini-2.5-pro"];
+const GEMINI_EMBEDDING_MODEL_PRESETS = ["gemini-embedding-001"];
 
 const SCHEMA_CUSTOM_PRESETS = [
   {
@@ -57,17 +55,38 @@ const SCHEMA_CUSTOM_PRESETS = [
   },
 ];
 
+function PresetChips({
+  presets,
+  onPick,
+}: {
+  presets: string[];
+  onPick: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {presets.map((p) => (
+        <Button key={p} type="button" size="sm" variant="outline" onClick={() => onPick(p)}>
+          {p}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
 export default function AdminSettings() {
   const [provider, setProvider] = useState("gemini");
+  const [chatModel, setChatModel] = useState("gemini-2.5-flash");
   const [keys, setKeys] = useState<Record<string, string>>({});
   const [baseUrl, setBaseUrl] = useState("");
   const [model, setModel] = useState("");
 
   const [schemaProvider, setSchemaProvider] = useState<"gemini" | "custom">("gemini");
-  const [schemaModel, setSchemaModel] = useState("gemini-2.0-flash");
+  const [schemaModel, setSchemaModel] = useState("gemini-2.5-flash");
   const [schemaCustomBaseUrl, setSchemaCustomBaseUrl] = useState("");
   const [schemaCustomModel, setSchemaCustomModel] = useState("");
   const [schemaCustomKey, setSchemaCustomKey] = useState("");
+
+  const [embeddingModel, setEmbeddingModel] = useState("gemini-embedding-001");
 
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -77,6 +96,7 @@ export default function AdminSettings() {
       .then((r) => r.json())
       .then((json) => {
         if (json.provider) setProvider(json.provider);
+        if (json.chatModel) setChatModel(json.chatModel);
         if (json.apiKeys) setKeys(json.apiKeys);
         if (json.custom) {
           setBaseUrl(json.custom.baseUrl ?? "");
@@ -89,6 +109,7 @@ export default function AdminSettings() {
           setSchemaCustomModel(json.schemaCustom.model ?? "");
           setSchemaCustomKey(json.schemaCustom.apiKey ?? "");
         }
+        if (json.embeddingModel) setEmbeddingModel(json.embeddingModel);
       });
   }, []);
 
@@ -101,6 +122,7 @@ export default function AdminSettings() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           provider,
+          chatModel,
           apiKeys: keys,
           custom: { baseUrl, model },
           schemaProvider,
@@ -110,6 +132,7 @@ export default function AdminSettings() {
             model: schemaCustomModel,
             apiKey: schemaCustomKey,
           },
+          embeddingModel,
         }),
       });
       const json = await res.json();
@@ -125,6 +148,17 @@ export default function AdminSettings() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">System & LLM Settings</h1>
+
+      <Card className="max-w-xl border-amber-300 bg-amber-50/50">
+        <CardContent className="pt-6 text-sm leading-relaxed">
+          Google periodically retires Gemini model ids (e.g.{" "}
+          <code className="rounded bg-secondary px-1">gemini-2.0-flash</code> and{" "}
+          <code className="rounded bg-secondary px-1">text-embedding-004</code> were
+          both shut down). Model fields below are free-text on purpose — if chat or
+          extraction suddenly starts erroring with a 404 &quot;model not found&quot;,
+          just type in the replacement model id here, no redeploy required.
+        </CardContent>
+      </Card>
 
       <Card className="max-w-xl">
         <CardHeader>
@@ -151,15 +185,14 @@ export default function AdminSettings() {
           {schemaProvider === "gemini" && (
             <>
               <div className="grid gap-1">
-                <Label>Gemini model</Label>
-                <Select value={schemaModel} onValueChange={setSchemaModel}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {SCHEMA_GEMINI_MODELS.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="schema-gemini-model">Gemini model id</Label>
+                <Input
+                  id="schema-gemini-model"
+                  placeholder="gemini-2.5-flash"
+                  value={schemaModel}
+                  onChange={(e) => setSchemaModel(e.target.value)}
+                />
+                <PresetChips presets={GEMINI_SCHEMA_MODEL_PRESETS} onPick={setSchemaModel} />
               </div>
               <p className="text-xs text-muted-foreground">
                 Uses the Gemini API Key from the chatbot section below (or, if
@@ -260,6 +293,19 @@ export default function AdminSettings() {
             </Select>
           </div>
 
+          {provider === "gemini" && (
+            <div className="grid gap-1">
+              <Label htmlFor="chat-gemini-model">Gemini model id</Label>
+              <Input
+                id="chat-gemini-model"
+                placeholder="gemini-2.5-flash"
+                value={chatModel}
+                onChange={(e) => setChatModel(e.target.value)}
+              />
+              <PresetChips presets={GEMINI_CHAT_MODEL_PRESETS} onPick={setChatModel} />
+            </div>
+          )}
+
           {provider === "custom" && (
             <>
               <div className="grid gap-1">
@@ -333,11 +379,11 @@ export default function AdminSettings() {
             </div>
           )}
 
-          {/* Gemini key needed for schema extraction above even if chat uses another provider */}
-          {provider !== "gemini" && schemaProvider === "gemini" && (
+          {/* Gemini key needed for schema extraction/embeddings above even if chat uses another provider */}
+          {provider !== "gemini" && (
             <div className="grid gap-1">
               <Label htmlFor="key-gemini-schema">
-                Gemini API Key (for PDF schema extraction above)
+                Gemini API Key (for PDF schema extraction / embeddings above)
               </Label>
               <Input
                 id="key-gemini-schema"
@@ -349,6 +395,40 @@ export default function AdminSettings() {
             </div>
           )}
 
+          {message && <p className="text-sm">{message}</p>}
+          <Button onClick={save} disabled={saving}>
+            {saving ? "Saving…" : "Save Configuration"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle>Knowledge Base Embedding Model</CardTitle>
+          <CardDescription>
+            Used to embed knowledge-base articles and chat queries for RAG
+            retrieval (cosine search via pgvector). Always Gemini&apos;s embedding
+            API, regardless of chat/schema provider — uses the same Gemini API
+            Key as above.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid gap-1">
+            <Label htmlFor="embedding-model">Embedding model id</Label>
+            <Input
+              id="embedding-model"
+              placeholder="gemini-embedding-001"
+              value={embeddingModel}
+              onChange={(e) => setEmbeddingModel(e.target.value)}
+            />
+            <PresetChips presets={GEMINI_EMBEDDING_MODEL_PRESETS} onPick={setEmbeddingModel} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            ⚠️ If you change this, existing embeddings in{" "}
+            <code className="rounded bg-secondary px-1">knowledge_base</code> were
+            generated with the old model and should be regenerated for consistent
+            similarity search results.
+          </p>
           {message && <p className="text-sm">{message}</p>}
           <Button onClick={save} disabled={saving}>
             {saving ? "Saving…" : "Save Configuration"}

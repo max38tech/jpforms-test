@@ -4,7 +4,7 @@ import { SCHEMA_EXTRACTION_PROMPT, parseSchemaJson } from "@/lib/schema-extracti
 export async function extractFormSchemaGemini(
   pdfBytes: Uint8Array,
   apiKey: string,
-  model = "gemini-2.0-flash"
+  model = "gemini-2.5-flash"
 ): Promise<{ fields: unknown[] }> {
   const { GoogleGenAI } = await import("@google/genai");
   const ai = new GoogleGenAI({ apiKey });

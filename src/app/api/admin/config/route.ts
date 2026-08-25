@@ -11,12 +11,13 @@ export async function GET() {
   // Mask keys in response
   return NextResponse.json({
     provider: config.provider,
+    chatModel: config.chatModel ?? "gemini-2.5-flash",
     apiKeys: Object.fromEntries(
       Object.entries(config.apiKeys ?? {}).map(([k, v]) => [k, v ? "••••••••" + v.slice(-4) : ""])
     ),
     custom: config.custom ?? null,
     schemaProvider: config.schemaProvider ?? "gemini",
-    schemaModel: config.schemaModel ?? "gemini-2.0-flash",
+    schemaModel: config.schemaModel ?? "gemini-2.5-flash",
     schemaCustom: config.schemaCustom
       ? {
           baseUrl: config.schemaCustom.baseUrl,
@@ -26,6 +27,7 @@ export async function GET() {
             : "",
         }
       : null,
+    embeddingModel: config.embeddingModel ?? "gemini-embedding-001",
   });
 }
 
@@ -37,6 +39,7 @@ export async function POST(req: Request) {
     const current = await getLLMConfig();
     const next: LLMConfig = {
       provider: body.provider ?? current.provider,
+      chatModel: body.chatModel ?? current.chatModel,
       apiKeys: { ...current.apiKeys },
       custom: { ...(current.custom ?? { baseUrl: "", model: "" }) },
       schemaProvider: body.schemaProvider ?? current.schemaProvider,
@@ -44,6 +47,7 @@ export async function POST(req: Request) {
       schemaCustom: {
         ...(current.schemaCustom ?? { baseUrl: "", model: "" }),
       },
+      embeddingModel: body.embeddingModel ?? current.embeddingModel,
     };
     // Only overwrite keys that are provided unmasked
     for (const k of ["gemini", "openai", "anthropic", "custom"] as const) {

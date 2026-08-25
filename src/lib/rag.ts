@@ -10,7 +10,7 @@ export async function generateEmbedding(text: string, config?: LLMConfig): Promi
   const { GoogleGenAI } = await import("@google/genai");
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.embedContent({
-    model: "text-embedding-004",
+    model: cfg.embeddingModel || "gemini-embedding-001",
     contents: [text],
     config: { outputDimensionality: 1536 },
   });

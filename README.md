@@ -50,10 +50,13 @@ UPDATE public.profiles SET role = 'admin' WHERE email = 'you@example.com';
 | GET/POST | `/api/admin/config` | Read/update LLM config (Admin) |
 
 ## RAG Chatbot
-Knowledge base documents are stored in `knowledge_base` with 1536-dim Gemini embeddings (`text-embedding-004`). Retrieval uses the pgvector RPC `match_documents` (cosine distance). Responses stream from whichever LLM is active in `/admin/settings`.
+Knowledge base documents are stored in `knowledge_base` with 1536-dim Gemini embeddings (embedding model configurable in `/admin/settings`, default `gemini-embedding-001`). Retrieval uses the pgvector RPC `match_documents` (cosine distance). Responses stream from whichever LLM is active in `/admin/settings`.
 
 ## PDF Schema Extraction (Analyze button)
 Configured independently from the chatbot in `/admin/settings` → PDF Schema Extraction Model. Two provider options:
-- **Gemini** — 2.0 Flash / 2.5 Flash / 2.5 Pro, using the native `@google/genai` SDK.
+- **Gemini** — free-text model id field (Google periodically retires model ids, so this isn't a hardcoded dropdown), using the native `@google/genai` SDK.
 - **Custom (OpenAI-compatible vision)** — any endpoint that accepts an inline base64 PDF as a `file` content part in chat completions, e.g. Qwen3.7-Flash / Qwen-VL-Max via QwenCloud/DashScope (`https://dashscope-intl.aliyuncs.com/compatible-mode/v1`), OpenAI GPT-4o-mini, or OpenRouter vision models. Useful for comparing cost/accuracy/translation quality against Gemini on the same form.
+
+## A note on Gemini model lifecycle
+Google retires Gemini model ids without much notice — `gemini-2.0-flash` and `text-embedding-004` were both shut down in early 2026. All Gemini model ids (chat, schema extraction, embeddings) are stored as free-text fields in `/admin/settings`, not fixed dropdowns, specifically so a sudden 404 "model not found" from Google can be fixed by typing the new model id in the admin UI — no code change or redeploy needed. If you see an error like `"This model models/X is no longer available"`, that error message itself usually tells you the replacement id to use.
 

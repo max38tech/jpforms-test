@@ -113,7 +113,7 @@ export async function streamChat(
   }));
 
   const response = await ai.models.generateContentStream({
-    model: "gemini-2.0-flash",
+    model: config.chatModel || "gemini-2.5-flash",
     contents,
     config: { systemInstruction: opts.systemPrompt },
   });
