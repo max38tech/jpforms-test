@@ -113,17 +113,13 @@ export default function AdminForms() {
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground leading-relaxed">
           Schema extraction (reading the PDF and generating translated field
-          labels) always uses Google Gemini — currently{" "}
-          <code className="rounded bg-secondary px-1">gemini-2.0-flash</code> —
-          because it requires native PDF vision input, which most other
-          providers (including the chatbot&apos;s Custom/OpenAI-compatible
-          option) don&apos;t support directly. To change the model, set the{" "}
-          <code className="rounded bg-secondary px-1">GEMINI_SCHEMA_MODEL</code>{" "}
-          environment variable in Vercel (e.g. to{" "}
-          <code className="rounded bg-secondary px-1">gemini-2.5-flash</code>) and
-          redeploy. This is separate from the RAG chatbot provider, which is
-          configured live in{" "}
-          <a href="/admin/settings" className="underline">System &amp; LLM Settings</a>.
+          labels) always uses a Gemini model, because it requires native PDF
+          vision input, which most other providers (including the chatbot&apos;s
+          Custom/OpenAI-compatible option) don&apos;t support directly. Change
+          the model in{" "}
+          <a href="/admin/settings" className="underline">System &amp; LLM Settings</a> →
+          PDF Schema Extraction Model. This is separate from the RAG chatbot
+          provider, configured in the same page.
         </CardContent>
       </Card>
 

@@ -15,6 +15,7 @@ export async function GET() {
       Object.entries(config.apiKeys ?? {}).map(([k, v]) => [k, v ? "••••••••" + v.slice(-4) : ""])
     ),
     custom: config.custom ?? null,
+    schemaModel: config.schemaModel ?? "gemini-2.0-flash",
   });
 }
 
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
       provider: body.provider ?? current.provider,
       apiKeys: { ...current.apiKeys },
       custom: { ...(current.custom ?? { baseUrl: "", model: "" }) },
+      schemaModel: body.schemaModel ?? current.schemaModel,
     };
     // Only overwrite keys that are provided unmasked
     for (const k of ["gemini", "openai", "anthropic", "custom"] as const) {

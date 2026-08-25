@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { isAdmin } from "@/lib/auth";
 import { extractFormSchema } from "@/lib/gemini/extract";
+import { getLLMConfig } from "@/lib/llm/config";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -14,10 +15,13 @@ export async function POST(req: Request) {
   if (!form_id)
     return NextResponse.json({ error: "form_id required" }, { status: 400 });
 
-  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  const llmConfig = await getLLMConfig();
+  const apiKey = llmConfig.apiKeys.gemini || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  const model = llmConfig.schemaModel || "gemini-2.0-flash";
+
   if (!apiKey)
     return NextResponse.json(
-      { error: "GOOGLE_GENERATIVE_AI_API_KEY not configured" },
+      { error: "No Gemini API key configured. Set it in Admin → System & LLM Settings, or via GOOGLE_GENERATIVE_AI_API_KEY." },
       { status: 500 }
     );
 
@@ -39,7 +43,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Failed to download template PDF" }, { status: 404 });
 
     const bytes = new Uint8Array(await pdfBlob.arrayBuffer());
-    const schema = await extractFormSchema(bytes, apiKey);
+    const schema = await extractFormSchema(bytes, apiKey, model);
 
     // Upsert into form_schemas
     const { error: upErr } = await supabase.from("form_schemas").upsert(
@@ -52,11 +56,7 @@ export async function POST(req: Request) {
     );
     if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
 
-    return NextResponse.json({
-      ok: true,
-      schema,
-      model: process.env.GEMINI_SCHEMA_MODEL || "gemini-2.0-flash",
-    });
+    return NextResponse.json({ ok: true, schema, model });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Gemini extraction failed" },

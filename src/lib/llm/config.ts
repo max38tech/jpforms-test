@@ -15,6 +15,12 @@ export interface LLMConfig {
     baseUrl: string;
     model: string;
   };
+  /**
+   * Model used for PDF form schema extraction ("Analyze with Gemini").
+   * Always Gemini regardless of the chat provider above, since it requires
+   * native PDF vision input.
+   */
+  schemaModel?: string;
 }
 
 const CONFIG_KEY = "chatbot_llm_config";
@@ -33,6 +39,7 @@ const DEFAULTS: LLMConfig = {
         model: process.env.CUSTOM_LLM_MODEL || "openai/gpt-oss-120b",
       }
     : undefined,
+  schemaModel: process.env.GEMINI_SCHEMA_MODEL || "gemini-2.0-flash",
 };
 
 export async function getLLMConfig(): Promise<LLMConfig> {

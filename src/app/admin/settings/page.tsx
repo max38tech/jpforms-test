@@ -28,11 +28,18 @@ const CUSTOM_PRESETS = [
   { label: "Ollama (local)", baseUrl: "http://localhost:11434/v1", model: "llama3.1" },
 ];
 
+const SCHEMA_MODELS = [
+  { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash (default, fast & cheap)" },
+  { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+  { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (highest accuracy, slower/pricier)" },
+];
+
 export default function AdminSettings() {
   const [provider, setProvider] = useState("gemini");
   const [keys, setKeys] = useState<Record<string, string>>({});
   const [baseUrl, setBaseUrl] = useState("");
   const [model, setModel] = useState("");
+  const [schemaModel, setSchemaModel] = useState("gemini-2.0-flash");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -46,6 +53,7 @@ export default function AdminSettings() {
           setBaseUrl(json.custom.baseUrl ?? "");
           setModel(json.custom.model ?? "");
         }
+        if (json.schemaModel) setSchemaModel(json.schemaModel);
       });
   }, []);
 
@@ -60,11 +68,12 @@ export default function AdminSettings() {
           provider,
           apiKeys: keys,
           custom: { baseUrl, model },
+          schemaModel,
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
-      setMessage("✅ Configuration saved — chatbot provider updated live");
+      setMessage("✅ Configuration saved — applies immediately, no redeploy needed");
     } catch (e) {
       setMessage(`❌ ${e instanceof Error ? e.message : "Save failed"}`);
     } finally {
@@ -75,6 +84,36 @@ export default function AdminSettings() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">System & LLM Settings</h1>
+
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle>PDF Schema Extraction Model</CardTitle>
+          <CardDescription>
+            Used by the &quot;Analyze with Gemini&quot; button in Form Manager. Always
+            a Gemini model, since it requires native PDF vision input — the chatbot
+            provider below (including Custom/open-source) can&apos;t read PDFs directly.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid gap-1">
+            <Label>Schema extraction model</Label>
+            <Select value={schemaModel} onValueChange={setSchemaModel}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {SCHEMA_MODELS.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Uses the Gemini API Key below (or, if that field is empty, the
+            server&apos;s <code className="rounded bg-secondary px-1">GOOGLE_GENERATIVE_AI_API_KEY</code>{" "}
+            environment variable).
+          </p>
+        </CardContent>
+      </Card>
+
       <Card className="max-w-xl">
         <CardHeader>
           <CardTitle>RAG Chatbot Provider</CardTitle>
@@ -168,6 +207,23 @@ export default function AdminSettings() {
             </div>
           )}
 
+          {/* Always show the Gemini key field too when it's not the primary chat
+              provider, since the schema extractor above needs it regardless. */}
+          {provider !== "gemini" && (
+            <div className="grid gap-1">
+              <Label htmlFor="key-gemini-schema">
+                Gemini API Key (for PDF schema extraction above)
+              </Label>
+              <Input
+                id="key-gemini-schema"
+                type="password"
+                placeholder={keys["gemini"] || "Not configured"}
+                value={keys["gemini"]?.startsWith("••") ? "" : keys["gemini"] ?? ""}
+                onChange={(e) => setKeys((prev) => ({ ...prev, gemini: e.target.value }))}
+              />
+            </div>
+          )}
+
           {message && <p className="text-sm">{message}</p>}
           <Button onClick={save} disabled={saving}>
             {saving ? "Saving…" : "Save Configuration"}
@@ -184,8 +240,9 @@ export default function AdminSettings() {
           quality options for a chatbot workload are Groq (free tier, very fast
           Llama 3.3 70B), Together AI, or DeepInfra (~$0.10–0.90 per M tokens).
           Self-hosting via Ollama or vLLM is also supported — just expose the
-          /v1 endpoint. Note: form schema extraction currently always uses Gemini,
-          since it requires native PDF vision input.
+          /v1 endpoint. Note: form schema extraction always uses Gemini (see the
+          card above), since it requires native PDF vision input that most
+          open-source text endpoints don&apos;t support.
         </CardContent>
       </Card>
     </div>

@@ -22,10 +22,10 @@ Include labels in all five languages (ja, en, vi, zh, ko).`;
 
 export async function extractFormSchema(
   pdfBytes: Uint8Array,
-  apiKey: string
+  apiKey: string,
+  model = "gemini-2.0-flash"
 ): Promise<{ fields: unknown[] }> {
   const ai = new GoogleGenAI({ apiKey });
-  const model = process.env.GEMINI_SCHEMA_MODEL || "gemini-2.0-flash";
 
   const base64 = Buffer.from(pdfBytes).toString("base64");
 
