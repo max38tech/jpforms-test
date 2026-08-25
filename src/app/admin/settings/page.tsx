@@ -28,10 +28,33 @@ const CUSTOM_PRESETS = [
   { label: "Ollama (local)", baseUrl: "http://localhost:11434/v1", model: "llama3.1" },
 ];
 
-const SCHEMA_MODELS = [
-  { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash (default, fast & cheap)" },
+const SCHEMA_GEMINI_MODELS = [
+  { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash (fast & cheap)" },
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-  { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (highest accuracy, slower/pricier)" },
+  { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (highest accuracy, translation quality)" },
+];
+
+const SCHEMA_CUSTOM_PRESETS = [
+  {
+    label: "Qwen3.7-Flash (QwenCloud/DashScope)",
+    baseUrl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    model: "qwen3.7-flash",
+  },
+  {
+    label: "Qwen-VL-Max (higher accuracy)",
+    baseUrl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    model: "qwen-vl-max",
+  },
+  {
+    label: "OpenAI GPT-4o-mini (vision)",
+    baseUrl: "https://api.openai.com/v1",
+    model: "gpt-4o-mini",
+  },
+  {
+    label: "OpenRouter (any vision model)",
+    baseUrl: "https://openrouter.ai/api/v1",
+    model: "qwen/qwen-vl-max",
+  },
 ];
 
 export default function AdminSettings() {
@@ -39,7 +62,13 @@ export default function AdminSettings() {
   const [keys, setKeys] = useState<Record<string, string>>({});
   const [baseUrl, setBaseUrl] = useState("");
   const [model, setModel] = useState("");
+
+  const [schemaProvider, setSchemaProvider] = useState<"gemini" | "custom">("gemini");
   const [schemaModel, setSchemaModel] = useState("gemini-2.0-flash");
+  const [schemaCustomBaseUrl, setSchemaCustomBaseUrl] = useState("");
+  const [schemaCustomModel, setSchemaCustomModel] = useState("");
+  const [schemaCustomKey, setSchemaCustomKey] = useState("");
+
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -53,7 +82,13 @@ export default function AdminSettings() {
           setBaseUrl(json.custom.baseUrl ?? "");
           setModel(json.custom.model ?? "");
         }
+        if (json.schemaProvider) setSchemaProvider(json.schemaProvider);
         if (json.schemaModel) setSchemaModel(json.schemaModel);
+        if (json.schemaCustom) {
+          setSchemaCustomBaseUrl(json.schemaCustom.baseUrl ?? "");
+          setSchemaCustomModel(json.schemaCustom.model ?? "");
+          setSchemaCustomKey(json.schemaCustom.apiKey ?? "");
+        }
       });
   }, []);
 
@@ -68,7 +103,13 @@ export default function AdminSettings() {
           provider,
           apiKeys: keys,
           custom: { baseUrl, model },
+          schemaProvider,
           schemaModel,
+          schemaCustom: {
+            baseUrl: schemaCustomBaseUrl,
+            model: schemaCustomModel,
+            apiKey: schemaCustomKey,
+          },
         }),
       });
       const json = await res.json();
@@ -89,28 +130,113 @@ export default function AdminSettings() {
         <CardHeader>
           <CardTitle>PDF Schema Extraction Model</CardTitle>
           <CardDescription>
-            Used by the &quot;Analyze with Gemini&quot; button in Form Manager. Always
-            a Gemini model, since it requires native PDF vision input — the chatbot
-            provider below (including Custom/open-source) can&apos;t read PDFs directly.
+            Used by the &quot;Analyze with Gemini&quot; button in Form Manager. Needs a
+            vision-capable model (it reads the PDF as an image). Independent of the
+            chatbot provider below — pick whatever gives the best accuracy/cost for
+            reading and translating Japanese forms.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="grid gap-1">
-            <Label>Schema extraction model</Label>
-            <Select value={schemaModel} onValueChange={setSchemaModel}>
+            <Label>Extraction provider</Label>
+            <Select value={schemaProvider} onValueChange={(v) => setSchemaProvider(v as "gemini" | "custom")}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {SCHEMA_MODELS.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                ))}
+                <SelectItem value="gemini">Gemini</SelectItem>
+                <SelectItem value="custom">Custom / Open-Source (OpenAI-compatible vision)</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Uses the Gemini API Key below (or, if that field is empty, the
-            server&apos;s <code className="rounded bg-secondary px-1">GOOGLE_GENERATIVE_AI_API_KEY</code>{" "}
-            environment variable).
-          </p>
+
+          {schemaProvider === "gemini" && (
+            <>
+              <div className="grid gap-1">
+                <Label>Gemini model</Label>
+                <Select value={schemaModel} onValueChange={setSchemaModel}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {SCHEMA_GEMINI_MODELS.map((m) => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Uses the Gemini API Key from the chatbot section below (or, if
+                empty, the server&apos;s{" "}
+                <code className="rounded bg-secondary px-1">GOOGLE_GENERATIVE_AI_API_KEY</code>).
+              </p>
+            </>
+          )}
+
+          {schemaProvider === "custom" && (
+            <>
+              <div className="grid gap-1">
+                <Label htmlFor="schema-baseurl">Base URL (OpenAI-compatible vision endpoint)</Label>
+                <Input
+                  id="schema-baseurl"
+                  placeholder="https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+                  value={schemaCustomBaseUrl}
+                  onChange={(e) => setSchemaCustomBaseUrl(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label>Quick presets</Label>
+                <div className="flex flex-wrap gap-2">
+                  {SCHEMA_CUSTOM_PRESETS.map((p) => (
+                    <Button
+                      key={p.label}
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSchemaCustomBaseUrl(p.baseUrl);
+                        setSchemaCustomModel(p.model);
+                      }}
+                    >
+                      {p.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid gap-1">
+                <Label htmlFor="schema-model">Model ID</Label>
+                <Input
+                  id="schema-model"
+                  placeholder="qwen3.7-flash"
+                  value={schemaCustomModel}
+                  onChange={(e) => setSchemaCustomModel(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label htmlFor="schema-key">API Key</Label>
+                <Input
+                  id="schema-key"
+                  type="password"
+                  placeholder={schemaCustomKey || "Required for most hosted providers"}
+                  value={schemaCustomKey.startsWith("••") ? "" : schemaCustomKey}
+                  onChange={(e) => setSchemaCustomKey(e.target.value)}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                For QwenCloud/DashScope, get a key at{" "}
+                <a href="https://dashscope.console.aliyun.com/" target="_blank" rel="noopener noreferrer" className="underline">
+                  dashscope.console.aliyun.com
+                </a>{" "}
+                — set{" "}
+                <code className="rounded bg-secondary px-1">DASHSCOPE_API_KEY</code>{" "}
+                as your API key here. Requires the endpoint to accept an inline
+                base64 PDF as a &quot;file&quot; content part in chat completions;
+                if a provider doesn&apos;t support that shape, extraction will
+                return a clear error and you can switch back to Gemini.
+              </p>
+            </>
+          )}
+
+          {message && <p className="text-sm">{message}</p>}
+          <Button onClick={save} disabled={saving}>
+            {saving ? "Saving…" : "Save Configuration"}
+          </Button>
         </CardContent>
       </Card>
 
@@ -207,9 +333,8 @@ export default function AdminSettings() {
             </div>
           )}
 
-          {/* Always show the Gemini key field too when it's not the primary chat
-              provider, since the schema extractor above needs it regardless. */}
-          {provider !== "gemini" && (
+          {/* Gemini key needed for schema extraction above even if chat uses another provider */}
+          {provider !== "gemini" && schemaProvider === "gemini" && (
             <div className="grid gap-1">
               <Label htmlFor="key-gemini-schema">
                 Gemini API Key (for PDF schema extraction above)
@@ -236,13 +361,12 @@ export default function AdminSettings() {
           <CardTitle className="text-base">💡 Open-source model tips</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground leading-relaxed">
-          The &quot;Custom&quot; provider works with any OpenAI-compatible API. Cheapest
-          quality options for a chatbot workload are Groq (free tier, very fast
-          Llama 3.3 70B), Together AI, or DeepInfra (~$0.10–0.90 per M tokens).
-          Self-hosting via Ollama or vLLM is also supported — just expose the
-          /v1 endpoint. Note: form schema extraction always uses Gemini (see the
-          card above), since it requires native PDF vision input that most
-          open-source text endpoints don&apos;t support.
+          For the chatbot: Groq (free tier, fast Llama 3.3 70B), Together AI, or
+          DeepInfra are cheap and solid. For PDF schema extraction, Qwen3.7-Flash
+          via QwenCloud/DashScope is a newer, cheaper vision option worth testing
+          against Gemini for both field-reading accuracy and translation quality —
+          switch providers above and re-run &quot;Analyze&quot; on the same form to
+          compare results side by side.
         </CardContent>
       </Card>
     </div>

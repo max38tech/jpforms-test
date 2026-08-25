@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 
 export type LLMProvider = "gemini" | "openai" | "anthropic" | "custom";
+export type SchemaProvider = "gemini" | "custom";
 
 export interface LLMConfig {
   provider: LLMProvider;
@@ -15,12 +16,25 @@ export interface LLMConfig {
     baseUrl: string;
     model: string;
   };
+
   /**
-   * Model used for PDF form schema extraction ("Analyze with Gemini").
-   * Always Gemini regardless of the chat provider above, since it requires
-   * native PDF vision input.
+   * PDF form schema extraction ("Analyze with Gemini" button). Independent
+   * of the chatbot provider above — you may want Gemini for chat but Qwen
+   * (cheaper vision) or a higher-end model (better translation) for
+   * extraction, or vice versa.
    */
+  schemaProvider?: SchemaProvider;
+  /** Model id used when schemaProvider === "gemini". */
   schemaModel?: string;
+  /** Endpoint + model + key used when schemaProvider === "custom". Any
+   *  OpenAI-compatible vision endpoint that accepts inline PDF/image file
+   *  content in chat completions (OpenAI gpt-4o family, Qwen-VL / DashScope
+   *  compatible-mode, OpenRouter vision models, etc.). */
+  schemaCustom?: {
+    baseUrl: string;
+    model: string;
+    apiKey?: string;
+  };
 }
 
 const CONFIG_KEY = "chatbot_llm_config";
@@ -39,7 +53,15 @@ const DEFAULTS: LLMConfig = {
         model: process.env.CUSTOM_LLM_MODEL || "openai/gpt-oss-120b",
       }
     : undefined,
+  schemaProvider: "gemini",
   schemaModel: process.env.GEMINI_SCHEMA_MODEL || "gemini-2.0-flash",
+  schemaCustom: process.env.SCHEMA_CUSTOM_BASE_URL
+    ? {
+        baseUrl: process.env.SCHEMA_CUSTOM_BASE_URL,
+        model: process.env.SCHEMA_CUSTOM_MODEL || "qwen3.7-flash",
+        apiKey: process.env.SCHEMA_CUSTOM_API_KEY,
+      }
+    : undefined,
 };
 
 export async function getLLMConfig(): Promise<LLMConfig> {

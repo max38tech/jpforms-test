@@ -113,10 +113,8 @@ export default function AdminForms() {
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground leading-relaxed">
           Schema extraction (reading the PDF and generating translated field
-          labels) always uses a Gemini model, because it requires native PDF
-          vision input, which most other providers (including the chatbot&apos;s
-          Custom/OpenAI-compatible option) don&apos;t support directly. Change
-          the model in{" "}
+          labels) needs a vision-capable model. Choose between Gemini or a
+          Custom OpenAI-compatible vision endpoint (e.g. Qwen3.7-Flash) in{" "}
           <a href="/admin/settings" className="underline">System &amp; LLM Settings</a> →
           PDF Schema Extraction Model. This is separate from the RAG chatbot
           provider, configured in the same page.

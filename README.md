@@ -51,3 +51,9 @@ UPDATE public.profiles SET role = 'admin' WHERE email = 'you@example.com';
 
 ## RAG Chatbot
 Knowledge base documents are stored in `knowledge_base` with 1536-dim Gemini embeddings (`text-embedding-004`). Retrieval uses the pgvector RPC `match_documents` (cosine distance). Responses stream from whichever LLM is active in `/admin/settings`.
+
+## PDF Schema Extraction (Analyze button)
+Configured independently from the chatbot in `/admin/settings` → PDF Schema Extraction Model. Two provider options:
+- **Gemini** — 2.0 Flash / 2.5 Flash / 2.5 Pro, using the native `@google/genai` SDK.
+- **Custom (OpenAI-compatible vision)** — any endpoint that accepts an inline base64 PDF as a `file` content part in chat completions, e.g. Qwen3.7-Flash / Qwen-VL-Max via QwenCloud/DashScope (`https://dashscope-intl.aliyuncs.com/compatible-mode/v1`), OpenAI GPT-4o-mini, or OpenRouter vision models. Useful for comparing cost/accuracy/translation quality against Gemini on the same form.
+
