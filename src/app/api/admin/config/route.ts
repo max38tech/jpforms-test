@@ -12,8 +12,9 @@ export async function GET() {
   return NextResponse.json({
     provider: config.provider,
     apiKeys: Object.fromEntries(
-      Object.entries(config.apiKeys).map(([k, v]) => [k, v ? "••••••••" + v.slice(-4) : ""])
+      Object.entries(config.apiKeys ?? {}).map(([k, v]) => [k, v ? "••••••••" + v.slice(-4) : ""])
     ),
+    custom: config.custom ?? null,
   });
 }
 
@@ -26,12 +27,15 @@ export async function POST(req: Request) {
     const next: LLMConfig = {
       provider: body.provider ?? current.provider,
       apiKeys: { ...current.apiKeys },
+      custom: { ...(current.custom ?? { baseUrl: "", model: "" }) },
     };
     // Only overwrite keys that are provided unmasked
-    for (const k of ["gemini", "openai", "anthropic"] as const) {
+    for (const k of ["gemini", "openai", "anthropic", "custom"] as const) {
       const v = body.apiKeys?.[k];
       if (v && !v.startsWith("••")) next.apiKeys[k] = v;
     }
+    if (body.custom?.baseUrl !== undefined) next.custom!.baseUrl = body.custom.baseUrl;
+    if (body.custom?.model !== undefined) next.custom!.model = body.custom.model;
     await saveLLMConfig(next);
     return NextResponse.json({ ok: true });
   } catch (e) {

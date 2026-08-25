@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -17,11 +17,22 @@ const PROVIDERS = [
   { value: "gemini", label: "Gemini 2.0 Flash" },
   { value: "openai", label: "OpenAI GPT-4o-mini" },
   { value: "anthropic", label: "Anthropic Claude 3.5 Haiku" },
+  { value: "custom", label: "Custom / Open-Source (OpenAI-compatible)" },
+];
+
+const CUSTOM_PRESETS = [
+  { label: "Groq", baseUrl: "https://api.groq.com/openai/v1", model: "llama-3.3-70b-versatile" },
+  { label: "Together AI", baseUrl: "https://api.together.xyz/v1", model: "meta-llama/Llama-3.3-70B-Instruct-Turbo" },
+  { label: "DeepInfra", baseUrl: "https://api.deepinfra.com/v1/openai", model: "Qwen/Qwen2.5-72B-Instruct" },
+  { label: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", model: "deepseek/deepseek-chat" },
+  { label: "Ollama (local)", baseUrl: "http://localhost:11434/v1", model: "llama3.1" },
 ];
 
 export default function AdminSettings() {
   const [provider, setProvider] = useState("gemini");
   const [keys, setKeys] = useState<Record<string, string>>({});
+  const [baseUrl, setBaseUrl] = useState("");
+  const [model, setModel] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -31,6 +42,10 @@ export default function AdminSettings() {
       .then((json) => {
         if (json.provider) setProvider(json.provider);
         if (json.apiKeys) setKeys(json.apiKeys);
+        if (json.custom) {
+          setBaseUrl(json.custom.baseUrl ?? "");
+          setModel(json.custom.model ?? "");
+        }
       });
   }, []);
 
@@ -41,7 +56,11 @@ export default function AdminSettings() {
       const res = await fetch("/api/admin/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, apiKeys: keys }),
+        body: JSON.stringify({
+          provider,
+          apiKeys: keys,
+          custom: { baseUrl, model },
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
@@ -59,6 +78,9 @@ export default function AdminSettings() {
       <Card className="max-w-xl">
         <CardHeader>
           <CardTitle>RAG Chatbot Provider</CardTitle>
+          <CardDescription>
+            The active provider is used by the support chatbot immediately — no redeploy.
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="grid gap-1">
@@ -73,25 +95,97 @@ export default function AdminSettings() {
             </Select>
           </div>
 
-          {(["gemini", "openai", "anthropic"] as const).map((k) => (
-            <div key={k} className="grid gap-1">
-              <Label htmlFor={`key-${k}`}>
-                {k === "gemini" ? "Gemini API Key" : k === "openai" ? "OpenAI API Key" : "Anthropic API Key"}
-              </Label>
+          {provider === "custom" && (
+            <>
+              <div className="grid gap-1">
+                <Label htmlFor="baseurl">Base URL (OpenAI-compatible endpoint)</Label>
+                <Input
+                  id="baseurl"
+                  placeholder="https://api.groq.com/openai/v1"
+                  value={baseUrl}
+                  onChange={(e) => setBaseUrl(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label>Quick presets</Label>
+                <div className="flex flex-wrap gap-2">
+                  {CUSTOM_PRESETS.map((p) => (
+                    <Button
+                      key={p.label}
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setBaseUrl(p.baseUrl);
+                        setModel(p.model);
+                      }}
+                    >
+                      {p.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid gap-1">
+                <Label htmlFor="cmodel">Model ID</Label>
+                <Input
+                  id="cmodel"
+                  placeholder="llama-3.3-70b-versatile"
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+
+          {(provider === "gemini" || provider === "openai" || provider === "anthropic") &&
+            (
+              ([["gemini", "Gemini API Key"], ["openai", "OpenAI API Key"], ["anthropic", "Anthropic API Key"]] as const)
+                .filter(([k]) => k === provider)
+                .map(([k, label]) => (
+                  <div key={k} className="grid gap-1">
+                    <Label htmlFor={`key-${k}`}>{label}</Label>
+                    <Input
+                      id={`key-${k}`}
+                      type="password"
+                      placeholder={keys[k] || "Not configured"}
+                      value={keys[k]?.startsWith("••") ? "" : keys[k] ?? ""}
+                      onChange={(e) => setKeys((prev) => ({ ...prev, [k]: e.target.value }))}
+                    />
+                  </div>
+                ))
+            )}
+
+          {provider === "custom" && (
+            <div className="grid gap-1">
+              <Label htmlFor="key-custom">API Key (leave empty for local/no-auth endpoints)</Label>
               <Input
-                id={`key-${k}`}
+                id="key-custom"
                 type="password"
-                placeholder={keys[k] || "Not configured"}
-                value={keys[k]?.startsWith("••") ? "" : keys[k] ?? ""}
-                onChange={(e) => setKeys((prev) => ({ ...prev, [k]: e.target.value }))}
+                placeholder={keys["custom"] || "Optional"}
+                value={keys["custom"]?.startsWith("••") ? "" : keys["custom"] ?? ""}
+                onChange={(e) => setKeys((prev) => ({ ...prev, custom: e.target.value }))}
               />
             </div>
-          ))}
+          )}
 
           {message && <p className="text-sm">{message}</p>}
           <Button onClick={save} disabled={saving}>
             {saving ? "Saving…" : "Save Configuration"}
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-xl border-dashed">
+        <CardHeader>
+          <CardTitle className="text-base">💡 Open-source model tips</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground leading-relaxed">
+          The &quot;Custom&quot; provider works with any OpenAI-compatible API. Cheapest
+          quality options for a chatbot workload are Groq (free tier, very fast
+          Llama 3.3 70B), Together AI, or DeepInfra (~$0.10–0.90 per M tokens).
+          Self-hosting via Ollama or vLLM is also supported — just expose the
+          /v1 endpoint. Note: form schema extraction currently always uses Gemini,
+          since it requires native PDF vision input.
         </CardContent>
       </Card>
     </div>
