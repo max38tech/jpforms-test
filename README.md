@@ -32,8 +32,10 @@ UPDATE public.profiles SET role = 'admin' WHERE email = 'you@example.com';
 | `/forms` | Public form catalog |
 | `/forms/[id]` | Dynamic translated questionnaire → PDF generation |
 | `/dashboard` | User submission history + PDF downloads |
+| `/legal-scrivener` | Required Gyoseishoshi partnership disclosure |
 | `/admin/forms` | Upload PDFs, Gemini schema analysis, publish/hide |
 | `/admin/settings` | Live LLM provider & API key configuration |
+| `/admin/content` | Edit homepage, footer, and legal scrivener notice text |
 | `/about`, `/terms`, `/privacy`, `/tokushoho` | Legal compliance pages |
 
 ## API Endpoints

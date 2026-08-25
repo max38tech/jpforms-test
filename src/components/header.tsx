@@ -52,12 +52,13 @@ export default function Header({
         </Link>
         <nav className="flex items-center gap-4 text-sm">
           <Link href="/forms" className="hover:underline">Form Library</Link>
-          <span
-            className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs text-amber-800"
+          <Link
+            href="/legal-scrivener"
+            className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs text-amber-800 hover:bg-amber-100"
             title="Legal representation provided by licensed partner Gyoseishoshi / Shiho-shoshi"
           >
             ⚖ Legal Scrivener Advisory
-          </span>
+          </Link>
         </nav>
         <div className="ml-auto flex items-center gap-3 text-sm">
           <Select value={lang} onValueChange={setLang}>

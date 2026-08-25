@@ -29,6 +29,7 @@ export default async function AdminLayout({
       <nav className="flex gap-4 border-b pb-3 text-sm">
         <Link href="/admin/forms" className="hover:underline">Form Manager</Link>
         <Link href="/admin/settings" className="hover:underline">System & LLM Settings</Link>
+        <Link href="/admin/content" className="hover:underline">Site Content</Link>
       </nav>
       {children}
     </div>

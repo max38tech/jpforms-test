@@ -52,7 +52,11 @@ export async function POST(req: Request) {
     );
     if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
 
-    return NextResponse.json({ ok: true, schema });
+    return NextResponse.json({
+      ok: true,
+      schema,
+      model: process.env.GEMINI_SCHEMA_MODEL || "gemini-2.0-flash",
+    });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Gemini extraction failed" },

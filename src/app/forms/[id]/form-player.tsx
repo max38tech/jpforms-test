@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import ChatWidget from "@/components/chat-widget";
 import { fieldLabel, type FormSchema, type Language } from "@/lib/types";
 
 export default function FormPlayer({
@@ -149,7 +148,6 @@ export default function FormPlayer({
           </Button>
         </CardContent>
       </Card>
-      <ChatWidget />
     </div>
   );
 }

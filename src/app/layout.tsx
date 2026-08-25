@@ -1,5 +1,7 @@
 import { getCurrentUser } from "@/lib/auth";
+import { getSiteContent } from "@/lib/site-content";
 import Header from "@/components/header";
+import ChatWidget from "@/components/chat-widget";
 import type { Metadata } from "next";
 import "./globals.css";
 
@@ -12,7 +14,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const current = await getCurrentUser();
+  const [current, content] = await Promise.all([getCurrentUser(), getSiteContent()]);
 
   return (
     <html lang="en">
@@ -27,13 +29,11 @@ export default async function RootLayout({
             <a href="/terms">Terms of Service</a>
             <a href="/privacy">Privacy Policy</a>
             <a href="/tokushoho">特定商取引法に基づく表記</a>
+            <a href="/legal-scrivener">Legal Scrivener Advisory</a>
           </div>
-          <p className="mt-2">
-            Software translation utilities are for informational self-application.
-            Official legal representation is provided by our licensed Gyoseishoshi /
-            Shiho-shoshi partner firm.
-          </p>
+          <p className="mt-2">{content.footer_disclaimer}</p>
         </footer>
+        <ChatWidget />
       </body>
     </html>
   );

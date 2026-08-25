@@ -25,11 +25,12 @@ export async function extractFormSchema(
   apiKey: string
 ): Promise<{ fields: unknown[] }> {
   const ai = new GoogleGenAI({ apiKey });
+  const model = process.env.GEMINI_SCHEMA_MODEL || "gemini-2.0-flash";
 
   const base64 = Buffer.from(pdfBytes).toString("base64");
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model,
     contents: [
       {
         role: "user",

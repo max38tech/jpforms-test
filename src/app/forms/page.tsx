@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import ChatWidget from "@/components/chat-widget";
 import { CATEGORIES } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -54,7 +53,6 @@ export default async function FormsCatalog() {
           ))}
         </div>
       )}
-      <ChatWidget />
     </div>
   );
 }
