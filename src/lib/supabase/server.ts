@@ -53,6 +53,10 @@ export function createRouteHandlerClient(
 
 export function createAdminClient(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY;
+  // Service role key must NEVER be NEXT_PUBLIC_-prefixed (it bypasses RLS).
+  // Falling back to the anon key here is intentional only for build-time
+  // safety when neither is set — at runtime with a real service role key
+  // configured, this always uses it.
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY;
   return createSupabaseClient(url, key, { auth: { persistSession: false } });
 }
