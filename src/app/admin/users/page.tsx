@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -30,27 +31,77 @@ interface UserRow {
   submissions: { total: number; completed: number };
 }
 
+interface InviteRow {
+  email: string;
+  role: "user" | "admin";
+  consumed_at: string | null;
+  created_at: string;
+}
+
 export default function AdminUsers() {
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [invites, setInvites] = useState<InviteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [grantAmount, setGrantAmount] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  const [newEmail, setNewEmail] = useState("");
+  const [newRole, setNewRole] = useState<"user" | "admin">("admin");
+  const [adding, setAdding] = useState(false);
+
   async function load() {
     setLoading(true);
-    const res = await fetch("/api/admin/users");
-    if (res.ok) {
-      const json = await res.json();
-      setUsers(json.users ?? []);
-    }
+    const [usersRes, invitesRes] = await Promise.all([
+      fetch("/api/admin/users"),
+      fetch("/api/admin/invites"),
+    ]);
+    if (usersRes.ok) setUsers((await usersRes.json()).users ?? []);
+    if (invitesRes.ok) setInvites((await invitesRes.json()).invites ?? []);
     setLoading(false);
   }
 
   useEffect(() => {
     load();
   }, []);
+
+  async function addUser() {
+    if (!newEmail.trim()) return;
+    setAdding(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/invites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: newEmail.trim(), role: newRole }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      if (json.applied === "immediately") {
+        setMessage(`✅ ${newEmail} already had an account — role set to ${newRole} immediately.`);
+      } else {
+        setMessage(
+          `✅ ${newEmail} will become ${newRole} the moment they sign in with Google for the first time.`
+        );
+      }
+      setNewEmail("");
+      await load();
+    } catch (e) {
+      setMessage(`❌ ${e instanceof Error ? e.message : "Failed to add user"}`);
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function removeInvite(email: string) {
+    await fetch("/api/admin/invites", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    load();
+  }
 
   async function setRole(u: UserRow, role: "user" | "admin") {
     setBusyId(u.id);
@@ -98,6 +149,7 @@ export default function AdminUsers() {
     const q = query.toLowerCase();
     return !q || u.email.toLowerCase().includes(q) || (u.full_name ?? "").toLowerCase().includes(q);
   });
+  const pendingInvites = invites.filter((i) => !i.consumed_at);
 
   return (
     <div className="space-y-6">
@@ -112,6 +164,61 @@ export default function AdminUsers() {
       </div>
 
       {message && <p className="text-sm">{message}</p>}
+
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle>Add User</CardTitle>
+          <CardDescription>
+            Accounts only exist once someone signs in with Google — there&apos;s
+            no separate password to set. Add an email here to pre-authorize a
+            role (e.g. give your partner scrivener admin access): if they&apos;ve
+            already signed in, it applies immediately; if not, it applies the
+            instant they first sign in with that Google account.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-[1fr_140px_auto] sm:items-end">
+          <div className="grid gap-1">
+            <Label htmlFor="new-email">Email</Label>
+            <Input
+              id="new-email"
+              type="email"
+              placeholder="partner@example.com"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-1">
+            <Label>Role</Label>
+            <Select value={newRole} onValueChange={(v) => setNewRole(v as "user" | "admin")}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="user">User</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={addUser} disabled={adding || !newEmail.trim()}>
+            {adding ? "Adding…" : "Add User"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {pendingInvites.length > 0 && (
+        <Card className="max-w-xl">
+          <CardHeader>
+            <CardTitle className="text-base">Pending Invites</CardTitle>
+            <CardDescription>Applied automatically on first Google sign-in.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {pendingInvites.map((i) => (
+              <div key={i.email} className="flex items-center justify-between rounded-md border p-2 text-sm">
+                <span>{i.email} → <span className="font-medium">{i.role}</span></span>
+                <Button size="sm" variant="ghost" onClick={() => removeInvite(i.email)}>Cancel</Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

@@ -14,7 +14,7 @@ Full-stack platform for translating and auto-filling official Japanese administr
 
 1. **Install**: `npm install`
 2. **Environment**: copy `.env.example` to `.env.local` and fill in values.
-3. **Database**: run `supabase/migrations/0001_init.sql` then `0002_wizard_payments.sql` in the Supabase SQL Editor, in that order.
+3. **Database**: run `supabase/migrations/0001_init.sql`, then `0002_wizard_payments.sql`, then `0003_admin_invites.sql` in the Supabase SQL Editor, in that order.
 4. **Storage**: create a private bucket named `pdf-templates` in Supabase Storage.
    - Upload template PDFs via `/admin/forms`
    - Optionally upload `fonts/NotoSansJP-Regular.ttf` to `pdf-templates/fonts/` for Japanese text overlays.
@@ -27,10 +27,11 @@ Full-stack platform for translating and auto-filling official Japanese administr
 7. **Run**: `npm run dev`
 
 ## Admin Access
-Set your profile row's `role` column to `'admin'`:
+Promote yourself directly via SQL (needed for the very first admin, before `/admin/users` → Add User exists to use):
 ```sql
 UPDATE public.profiles SET role = 'admin' WHERE email = 'you@example.com';
 ```
+After that, use `/admin/users` → **Add User** to give anyone else (e.g. your partner scrivener) admin access by email — works whether they've already signed in or not (see Customer Journey below for details on how that resolves).
 
 ## Customer Journey
 1. User browses `/forms`, picks a form.
@@ -79,6 +80,7 @@ UPDATE public.profiles SET role = 'admin' WHERE email = 'you@example.com';
 | PUT/DELETE | `/api/admin/knowledge-base/[id]` | Edit/delete a RAG document (Admin) |
 | GET/POST/PATCH | `/api/admin/forms` | List/create/update forms including page_count (Admin) |
 | GET/PATCH | `/api/admin/users` | List users with activity/balance; update role or grant/remove page credits (Admin) |
+| GET/POST/DELETE | `/api/admin/invites` | Pre-authorize an email's role for their first sign-in, or cancel a pending invite (Admin) |
 | GET/POST | `/api/admin/content` | Read/update site content (Admin) |
 
 ## RAG Chatbot & Knowledge Base
