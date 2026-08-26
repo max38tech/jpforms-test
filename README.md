@@ -14,7 +14,7 @@ Full-stack platform for translating and auto-filling official Japanese administr
 
 1. **Install**: `npm install`
 2. **Environment**: copy `.env.example` to `.env.local` and fill in values.
-3. **Database**: run `supabase/migrations/0001_init.sql`, then `0002_wizard_payments.sql`, then `0003_admin_invites.sql` in the Supabase SQL Editor, in that order.
+3. **Database**: run `supabase/migrations/0001_init.sql`, then `0002_wizard_payments.sql`, then `0003_admin_invites.sql`, then `0004_language_preference.sql` in the Supabase SQL Editor, in that order.
 4. **Storage**: create a private bucket named `pdf-templates` in Supabase Storage.
    - Upload template PDFs via `/admin/forms`
    - Optionally upload `fonts/NotoSansJP-Regular.ttf` to `pdf-templates/fonts/` for Japanese text overlays.
@@ -25,6 +25,11 @@ Full-stack platform for translating and auto-filling official Japanese administr
    - Create a webhook endpoint in the Stripe dashboard pointing at `https://<domain>/api/billing/webhook`, listening for `checkout.session.completed`, `invoice.paid`, `customer.subscription.deleted` — copy its signing secret into `STRIPE_WEBHOOK_SECRET`
    - Set pricing in `/admin/billing` (defaults: ¥500/page one-time, ¥2500 for 30 pages/week subscription)
 7. **Run**: `npm run dev`
+
+## Language & Translation
+The header language selector (English/日本語/Tiếng Việt/中文/한국어) is a genuine site-wide preference, not decorative: it's held in a React Context (`LanguageProvider`), persisted to a cookie for anonymous visitors and to `profiles.preferred_language` for signed-in users, and consumed by:
+- The wizard (field labels, per `/lib/types`'s `fieldLabel`) — changing language inside the wizard also updates the site-wide preference.
+- The support chatbot — `/api/chat` receives the selected language and `buildRagSystemPrompt` explicitly instructs the model to respond ONLY in that language and to *translate* retrieved knowledge-base content into it, rather than relying on the model to infer language from a short/ambiguous user message (e.g. "hi"). Knowledge-base documents are typically written in Japanese/English by the admin; the model translates on the fly at answer time — there's no separate stored translation per document.
 
 ## Admin Access
 Promote yourself directly via SQL (needed for the very first admin, before `/admin/users` → Add User exists to use):
@@ -72,7 +77,8 @@ After that, use `/admin/users` → **Add User** to give anyone else (e.g. your p
 | POST | `/api/billing/checkout` | Create a Stripe Checkout session (one-time or subscription) (User) |
 | POST | `/api/billing/webhook` | Stripe webhook — grants page credits on payment (Stripe only, signature-verified) |
 | GET | `/api/user/submissions` | Submission history (User) |
-| POST | `/api/chat` | RAG chatbot streaming endpoint |
+| POST | `/api/user/language` | Set site-wide language preference (cookie + profile if signed in) |
+| POST | `/api/chat` | RAG chatbot streaming endpoint — responds in the language passed in the request body |
 | GET/POST | `/api/admin/config` | Read/update LLM config (Admin) |
 | GET/POST | `/api/admin/billing` | Read/update pricing config (Admin) |
 | GET | `/api/admin/billing/status` | Whether Stripe env vars are configured (Admin) |

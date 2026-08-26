@@ -4,13 +4,23 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLanguage } from "@/components/language-provider";
 
 interface Msg {
   role: "user" | "assistant";
   content: string;
 }
 
+const PLACEHOLDERS: Record<string, string> = {
+  en: "Ask about Japanese forms, visas, or ward office procedures.",
+  ja: "日本の書類やビザ、区役所の手続きについて質問してください。",
+  vi: "Hỏi về các mẫu đơn Nhật Bản, visa, hoặc thủ tục tại ủy ban phường.",
+  zh: "询问有关日本表格、签证或区役所手续的问题。",
+  ko: "일본 서류, 비자, 구청 절차에 대해 질문하세요.",
+};
+
 export default function ChatWidget() {
+  const { language } = useLanguage();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -32,7 +42,7 @@ export default function ChatWidget() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({ messages: next, language }),
       });
       if (!res.body) throw new Error("No response stream");
       const reader = res.body.getReader();
@@ -66,7 +76,7 @@ export default function ChatWidget() {
             <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 text-sm">
               {messages.length === 0 && (
                 <p className="text-muted-foreground">
-                  Ask about Japanese forms, visas, or ward office procedures.
+                  {PLACEHOLDERS[language] ?? PLACEHOLDERS.en}
                 </p>
               )}
               {messages.map((m, i) => (

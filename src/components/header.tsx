@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -11,13 +10,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useLanguage } from "@/components/language-provider";
+import type { Language } from "@/lib/types";
 
 export interface HeaderUser {
   email: string;
   role: "user" | "admin";
 }
 
-const LANGS = [
+const LANGS: { code: Language; label: string }[] = [
   { code: "en", label: "English" },
   { code: "ja", label: "日本語" },
   { code: "vi", label: "Tiếng Việt" },
@@ -31,7 +32,7 @@ export default function Header({
   user: HeaderUser | null;
 }) {
   const router = useRouter();
-  const [lang, setLang] = useState("en");
+  const { language, setLanguage } = useLanguage();
 
   async function signOut() {
     const { createBrowserClient } = await import("@supabase/auth-helpers-nextjs");
@@ -61,7 +62,7 @@ export default function Header({
           </Link>
         </nav>
         <div className="ml-auto flex items-center gap-3 text-sm">
-          <Select value={lang} onValueChange={setLang}>
+          <Select value={language} onValueChange={(v) => setLanguage(v as Language)}>
             <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               {LANGS.map((l) => (

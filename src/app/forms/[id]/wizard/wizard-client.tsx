@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { fieldLabel, type FormSchema, type Language } from "@/lib/types";
+import { useLanguage } from "@/components/language-provider";
 import PaymentPanel from "./payment-panel";
 
 interface Props {
@@ -40,10 +41,15 @@ export default function WizardClient({
   pageCount,
 }: Props) {
   const router = useRouter();
+  const { language: siteLanguage, setLanguage: setSiteLanguage } = useLanguage();
   const fields = schema.fields;
   const total = fields.length;
 
-  const [lang, setLang] = useState<Language>("en");
+  const [lang, setLangState] = useState<Language>(siteLanguage);
+  function setLang(v: Language) {
+    setLangState(v);
+    setSiteLanguage(v); // keep the wizard's choice in sync site-wide (chat, header)
+  }
   const [values, setValues] = useState<Record<string, string>>(initialData);
   const [step, setStep] = useState(Math.min(initialStep, Math.max(total - 1, 0)));
   const [saveState, setSaveState] = useState<SaveState>("idle");
