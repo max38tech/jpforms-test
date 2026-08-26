@@ -15,8 +15,8 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
 
-  // Protect /dashboard: require login
-  if (path.startsWith("/dashboard") && !session) {
+  // Protect /dashboard and /submissions: require login
+  if ((path.startsWith("/dashboard") || path.startsWith("/submissions")) && !session) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
@@ -37,5 +37,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*"],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/submissions/:path*"],
 };

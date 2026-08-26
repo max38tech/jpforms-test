@@ -28,6 +28,7 @@ export async function POST(req: Request) {
     const titleEn = formData.get("title_en") as string;
     const titleJa = formData.get("title_ja") as string;
     const category = formData.get("category") as string;
+    const pageCount = Math.max(1, Number(formData.get("page_count")) || 1);
 
     if (!pdf || !titleEn || !titleJa)
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
@@ -47,6 +48,7 @@ export async function POST(req: Request) {
         title_ja: titleJa,
         category,
         pdf_template_path: path,
+        page_count: pageCount,
       })
       .select()
       .single();

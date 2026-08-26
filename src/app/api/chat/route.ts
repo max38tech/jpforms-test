@@ -16,12 +16,14 @@ export async function POST(req: Request) {
     if (!lastUser) return NextResponse.json({ error: "no user message" }, { status: 400 });
 
     // RAG retrieval
-    let systemPrompt = "You are a helpful assistant for foreigners in Japan navigating administrative forms.";
+    let systemPrompt: string;
     try {
       const context = await retrieveContext(lastUser.content);
-      systemPrompt = buildRagSystemPrompt(context);
+      systemPrompt = await buildRagSystemPrompt(context);
     } catch {
-      // Fall back to base prompt if retrieval fails
+      // Retrieval failed (e.g. no embeddings yet) — still use the branded
+      // prompt so the scrivener-partner framing is consistent either way.
+      systemPrompt = await buildRagSystemPrompt([]);
     }
 
     const config = await getLLMConfig();

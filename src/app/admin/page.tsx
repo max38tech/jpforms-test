@@ -11,6 +11,18 @@ export default function AdminIndex() {
             Upload PDFs, run Gemini schema analysis, publish or hide forms.
           </p>
         </Link>
+        <Link href="/admin/knowledge-base" className="rounded-lg border p-6 hover:shadow-md">
+          <h2 className="font-semibold">📚 Knowledge Base</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Add company info and form/procedure guides for the support chatbot.
+          </p>
+        </Link>
+        <Link href="/admin/billing" className="rounded-lg border p-6 hover:shadow-md">
+          <h2 className="font-semibold">💳 Billing & Pricing</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Set per-page pricing and subscription plan details for Stripe checkout.
+          </p>
+        </Link>
         <Link href="/admin/settings" className="rounded-lg border p-6 hover:shadow-md">
           <h2 className="font-semibold">⚙ System & LLM Settings</h2>
           <p className="mt-1 text-sm text-muted-foreground">

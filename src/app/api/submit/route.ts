@@ -6,6 +6,12 @@ import type { FormField } from "@/lib/types";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+/**
+ * Finalizes a wizard submission: fills the PDF and marks the submission
+ * completed. Does NOT grant a download — that happens via
+ * /api/submissions/[id]/download, which is payment-gated. This keeps
+ * PDF generation (cheap, can retry) separate from the paywall check.
+ */
 export async function POST(req: Request) {
   const supabase = createServerComponentClient();
   const {
@@ -16,11 +22,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
   try {
-    const { form_id, form_data } = await req.json();
-    if (!form_id || !form_data)
-      return NextResponse.json({ error: "form_id and form_data required" }, { status: 400 });
+    const { submission_id, form_id, form_data } = await req.json();
+    if (!submission_id || !form_id || !form_data)
+      return NextResponse.json(
+        { error: "submission_id, form_id and form_data required" },
+        { status: 400 }
+      );
 
     const admin = createAdminClient();
+
+    // Verify ownership + draft status
+    const { data: existing } = await admin
+      .from("submissions")
+      .select("*")
+      .eq("id", submission_id)
+      .single();
+    if (!existing) return NextResponse.json({ error: "Submission not found" }, { status: 404 });
+    if (existing.user_id !== session.user.id)
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     // Load form + schema
     const { data: form } = await admin.from("forms").select("*").eq("id", form_id).single();
@@ -66,29 +85,22 @@ export async function POST(req: Request) {
       .upload(outPath, filled, { contentType: "application/pdf", upsert: true });
     if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
 
-    // Record submission
-    const { data: submission, error: subErr } = await supabase
+    // Mark submission completed (payment still required to download)
+    const { error: updErr } = await admin
       .from("submissions")
-      .insert({
-        user_id: session.user.id,
-        form_id,
+      .update({
         status: "completed",
         form_data,
         output_pdf_path: outPath,
+        updated_at: new Date().toISOString(),
       })
-      .select()
-      .single();
-    if (subErr) return NextResponse.json({ error: subErr.message }, { status: 500 });
-
-    // Signed URL (1 hour)
-    const { data: signed } = await admin.storage
-      .from("pdf-templates")
-      .createSignedUrl(outPath, 3600);
+      .eq("id", submission_id);
+    if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
 
     return NextResponse.json({
       ok: true,
-      submission_id: submission.id,
-      download_url: signed?.signedUrl ?? null,
+      submission_id,
+      page_count: form.page_count ?? 1,
     });
   } catch (e) {
     return NextResponse.json(

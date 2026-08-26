@@ -28,6 +28,7 @@ interface FormRow {
   title_en: string;
   category: string;
   is_active: boolean;
+  page_count: number;
 }
 
 export default function AdminForms() {
@@ -38,6 +39,7 @@ export default function AdminForms() {
   const [titleEn, setTitleEn] = useState("");
   const [titleJa, setTitleJa] = useState("");
   const [category, setCategory] = useState("immigration");
+  const [pageCount, setPageCount] = useState("1");
   const [file, setFile] = useState<File | null>(null);
 
   async function load() {
@@ -62,11 +64,12 @@ export default function AdminForms() {
       fd.append("title_en", titleEn);
       fd.append("title_ja", titleJa);
       fd.append("category", category);
+      fd.append("page_count", pageCount);
       const res = await fetch("/api/admin/forms", { method: "POST", body: fd });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
       setMessage("✅ Form uploaded");
-      setTitleEn(""); setTitleJa(""); setFile(null);
+      setTitleEn(""); setTitleJa(""); setFile(null); setPageCount("1");
       load();
     } catch (e) {
       setMessage(`❌ ${e instanceof Error ? e.message : "Upload failed"}`);
@@ -101,6 +104,16 @@ export default function AdminForms() {
       body: JSON.stringify({ id: f.id, is_active: !f.is_active }),
     });
     load();
+  }
+
+  async function updatePageCount(f: FormRow, value: string) {
+    const n = Math.max(1, Number(value) || 1);
+    setForms((prev) => prev.map((x) => (x.id === f.id ? { ...x, page_count: n } : x)));
+    await fetch("/api/admin/forms", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: f.id, page_count: n }),
+    });
   }
 
   return (
@@ -152,6 +165,20 @@ export default function AdminForms() {
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
           </div>
+          <div className="grid gap-1">
+            <Label htmlFor="pages">Page count (printed A4 pages)</Label>
+            <Input
+              id="pages"
+              type="number"
+              min={1}
+              value={pageCount}
+              onChange={(e) => setPageCount(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Used to calculate the per-page download price (¥500/page by default —
+              set in Admin → Billing).
+            </p>
+          </div>
           <Button onClick={upload} disabled={uploading || !file}>
             {uploading ? "Uploading…" : "Upload"}
           </Button>
@@ -168,6 +195,7 @@ export default function AdminForms() {
               <TableRow>
                 <TableHead>Title</TableHead>
                 <TableHead>Category</TableHead>
+                <TableHead>Pages</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -177,6 +205,15 @@ export default function AdminForms() {
                 <TableRow key={f.id}>
                   <TableCell>{f.title_en}<br /><span className="text-xs text-muted-foreground">{f.title_ja}</span></TableCell>
                   <TableCell>{f.category}</TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      min={1}
+                      className="w-16"
+                      value={f.page_count ?? 1}
+                      onChange={(e) => updatePageCount(f, e.target.value)}
+                    />
+                  </TableCell>
                   <TableCell>{f.is_active ? "Active" : "Hidden"}</TableCell>
                   <TableCell className="flex gap-2">
                     <Button size="sm" variant="outline" onClick={() => parse(f.id)} disabled={parsingId === f.id}>

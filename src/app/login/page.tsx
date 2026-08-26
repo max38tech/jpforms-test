@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,16 +16,31 @@ function LoginError() {
   );
 }
 
-async function signInWithGoogle() {
-  const { createBrowserClient } = await import("@supabase/auth-helpers-nextjs");
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+function SignInButton() {
+  const params = useSearchParams();
+  const next = params.get("next") || "/dashboard";
+  const [loading, setLoading] = useState(false);
+
+  async function signInWithGoogle() {
+    setLoading(true);
+    const { createBrowserClient } = await import("@supabase/auth-helpers-nextjs");
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const callbackUrl = new URL(`${window.location.origin}/auth/callback`);
+    callbackUrl.searchParams.set("next", next);
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: callbackUrl.toString() },
+    });
+  }
+
+  return (
+    <Button onClick={signInWithGoogle} className="w-full" disabled={loading}>
+      {loading ? "Redirecting to Google…" : "Continue with Google"}
+    </Button>
   );
-  await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: { redirectTo: `${window.location.origin}/auth/callback` },
-  });
 }
 
 export default function LoginPage() {
@@ -41,9 +56,9 @@ export default function LoginPage() {
         <Suspense fallback={null}>
           <LoginError />
         </Suspense>
-        <Button onClick={signInWithGoogle} className="w-full">
-          Continue with Google
-        </Button>
+        <Suspense fallback={<Button className="w-full" disabled>Continue with Google</Button>}>
+          <SignInButton />
+        </Suspense>
       </CardContent>
     </Card>
   );
