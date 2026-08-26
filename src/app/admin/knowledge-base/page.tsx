@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,9 @@ const CATEGORIES = [
   { value: "faq", label: "General FAQ" },
 ];
 
+const ACCEPTED_TYPES =
+  "application/pdf,.pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt,.md,text/plain,image/png,image/jpeg,image/jpg,image/webp";
+
 export default function AdminKnowledgeBase() {
   const [docs, setDocs] = useState<Doc[]>([]);
   const [title, setTitle] = useState("");
@@ -47,6 +50,9 @@ export default function AdminKnowledgeBase() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [extracting, setExtracting] = useState(false);
+  const [extractWarning, setExtractWarning] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     const res = await fetch("/api/admin/knowledge-base");
@@ -65,6 +71,8 @@ export default function AdminKnowledgeBase() {
     setContent("");
     setCategory("company_info");
     setEditingId(null);
+    setExtractWarning(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function editDoc(d: Doc) {
@@ -72,7 +80,38 @@ export default function AdminKnowledgeBase() {
     setTitle(d.title);
     setContent(d.content);
     setCategory(d.category ?? "company_info");
+    setExtractWarning(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setExtracting(true);
+    setExtractWarning(null);
+    setMessage(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/admin/knowledge-base/extract", {
+        method: "POST",
+        body: fd,
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+
+      // Append rather than overwrite, so uploading multiple files (e.g. a
+      // form instructions PDF + a follow-up image) builds one document.
+      setContent((prev) => (prev ? `${prev}\n\n${json.text}` : json.text));
+      if (!title && json.suggestedTitle) setTitle(json.suggestedTitle);
+      if (json.warning) setExtractWarning(json.warning);
+      setMessage(`✅ Extracted text from ${file.name} (${json.method}) — review below before saving.`);
+    } catch (err) {
+      setMessage(`❌ ${err instanceof Error ? err.message : "Extraction failed"}`);
+    } finally {
+      setExtracting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }
 
   async function save() {
@@ -147,12 +186,36 @@ export default function AdminKnowledgeBase() {
               </SelectContent>
             </Select>
           </div>
+
+          <div className="grid gap-1">
+            <Label htmlFor="upload">Upload a document (optional)</Label>
+            <Input
+              id="upload"
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPTED_TYPES}
+              onChange={handleFileUpload}
+              disabled={extracting}
+            />
+            <p className="text-xs text-muted-foreground">
+              PDF, Word (.docx), text (.txt/.md), or image (JPG/PNG/WebP) — e.g. the
+              instruction sheet that comes with an official government form.
+              Extracted text is appended into the Content box below for you to
+              review and clean up before saving. Scanned PDFs and images are read
+              via AI OCR automatically.
+            </p>
+            {extracting && <p className="text-sm text-muted-foreground">Extracting text…</p>}
+            {extractWarning && (
+              <p className="text-sm text-amber-700">⚠️ {extractWarning}</p>
+            )}
+          </div>
+
           <div className="grid gap-1">
             <Label htmlFor="content">Content</Label>
             <Textarea
               id="content"
-              rows={10}
-              placeholder="Write the full answer/info here in plain language. E.g. company details, or: 'Sole proprietorship registration (開業届, kaigyō todoke) is filed with the local tax office, not something we currently auto-fill. Customers should visit the National Tax Agency site or ask our partner scrivener for assistance filing it.'"
+              rows={14}
+              placeholder="Write the full answer/info here in plain language, or upload a document above to extract it automatically. E.g. company details, or: 'Sole proprietorship registration (開業届, kaigyō todoke) is filed with the local tax office, not something we currently auto-fill. Customers should visit the National Tax Agency site or ask our partner scrivener for assistance filing it.'"
               value={content}
               onChange={(e) => setContent(e.target.value)}
             />

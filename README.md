@@ -78,6 +78,7 @@ After that, use `/admin/users` → **Add User** to give anyone else (e.g. your p
 | GET | `/api/admin/billing/status` | Whether Stripe env vars are configured (Admin) |
 | GET/POST | `/api/admin/knowledge-base` | List/add RAG documents (Admin) |
 | PUT/DELETE | `/api/admin/knowledge-base/[id]` | Edit/delete a RAG document (Admin) |
+| POST | `/api/admin/knowledge-base/extract` | Extract text from an uploaded PDF/DOCX/TXT/image for the KB form (Admin) |
 | GET/POST/PATCH | `/api/admin/forms` | List/create/update forms including page_count (Admin) |
 | GET/PATCH | `/api/admin/users` | List users with activity/balance; update role or grant/remove page credits (Admin) |
 | GET/POST/DELETE | `/api/admin/invites` | Pre-authorize an email's role for their first sign-in, or cancel a pending invite (Admin) |
@@ -88,6 +89,11 @@ Manage documents at `/admin/knowledge-base` — this is required for the chatbot
 - **Company info**: who you are, your partner Gyoseishoshi (referenced by name in the system prompt so the bot recommends *your* in-house scrivener instead of a generic "find a lawyer" answer), pricing, refund policy.
 - **Form guides**: procedures/forms you do *not* auto-fill but customers ask about (e.g. sole proprietorship registration) — write a short guide explaining where/how to actually file it, or that your partner scrivener can help.
 - **FAQs**: your most common customer questions.
+
+Each document has a Title, Category, and Content field you can type directly, or fill via file upload — PDF, Word (.docx), plain text (.txt/.md), or images (JPG/PNG/WebP), e.g. the instruction sheet that comes with an official government form. Uploading extracts text into the Content box for review/editing before saving:
+- **Text-layer PDFs / DOCX / TXT**: extracted directly (`pdf-parse` / `mammoth`), no AI cost.
+- **Scanned PDFs and images**: automatically OCR'd via the Gemini vision model configured as the schema extraction model in `/admin/settings` (falls back to this when a PDF has no usable text layer).
+- Multiple files can be uploaded in sequence into the same document — each appends to the Content box rather than replacing it.
 
 Documents are embedded (1536-dim, model configurable in `/admin/settings`) and retrieved via the pgvector RPC `match_documents` (cosine distance) at chat time. The system prompt is built dynamically from `/admin/content`'s scrivener fields — fill those in for the bot to reference your actual partner by name.
 
