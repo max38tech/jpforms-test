@@ -9,6 +9,12 @@ export const metadata: Metadata = {
   title: "JPForms — Japan Form Automation Platform",
   description:
     "Translate and auto-fill official Japanese administrative forms in your language.",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-icon.png" }],
+  },
+  themeColor: "#bc002d",
 };
 
 export default async function RootLayout({
