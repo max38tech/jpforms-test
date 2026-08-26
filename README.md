@@ -52,6 +52,7 @@ UPDATE public.profiles SET role = 'admin' WHERE email = 'you@example.com';
 | `/legal-scrivener` | Required Gyoseishoshi partnership disclosure |
 | `/admin/forms` | Upload PDFs, Gemini schema analysis, set page count, publish/hide |
 | `/admin/knowledge-base` | Add/edit/delete RAG knowledge base documents (company info, form guides, FAQs) |
+| `/admin/users` | Manage user roles, view activity, grant/remove page credits |
 | `/admin/billing` | Set per-page and subscription pricing; Stripe configuration status |
 | `/admin/settings` | Live LLM provider & API key configuration (chat + schema extraction + embeddings) |
 | `/admin/content` | Edit homepage, footer, and legal scrivener notice text |
@@ -77,6 +78,7 @@ UPDATE public.profiles SET role = 'admin' WHERE email = 'you@example.com';
 | GET/POST | `/api/admin/knowledge-base` | List/add RAG documents (Admin) |
 | PUT/DELETE | `/api/admin/knowledge-base/[id]` | Edit/delete a RAG document (Admin) |
 | GET/POST/PATCH | `/api/admin/forms` | List/create/update forms including page_count (Admin) |
+| GET/PATCH | `/api/admin/users` | List users with activity/balance; update role or grant/remove page credits (Admin) |
 | GET/POST | `/api/admin/content` | Read/update site content (Admin) |
 
 ## RAG Chatbot & Knowledge Base

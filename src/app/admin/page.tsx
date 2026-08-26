@@ -17,6 +17,12 @@ export default function AdminIndex() {
             Add company info and form/procedure guides for the support chatbot.
           </p>
         </Link>
+        <Link href="/admin/users" className="rounded-lg border p-6 hover:shadow-md">
+          <h2 className="font-semibold">👤 Users</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage admin access, view activity, grant page credits.
+          </p>
+        </Link>
         <Link href="/admin/billing" className="rounded-lg border p-6 hover:shadow-md">
           <h2 className="font-semibold">💳 Billing & Pricing</h2>
           <p className="mt-1 text-sm text-muted-foreground">
