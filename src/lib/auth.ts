@@ -19,13 +19,26 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     let role: "user" | "admin" = "user";
     let preferredLanguage: Language = "en";
     try {
+      // Select role and preferred_language separately: if migration 0004
+      // (which adds preferred_language) hasn't been run yet in this
+      // environment, a combined select silently returns { data: null,
+      // error } from supabase-js rather than throwing — which would
+      // otherwise make a real admin's role incorrectly resolve to "user"
+      // just because an unrelated column is missing. Role must never be
+      // collateral damage from an unrelated schema gap.
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role, preferred_language")
+        .select("role")
         .eq("id", session.user.id)
         .single();
       if (profile?.role === "admin") role = "admin";
-      if (profile?.preferred_language) preferredLanguage = profile.preferred_language as Language;
+
+      const { data: langRow } = await supabase
+        .from("profiles")
+        .select("preferred_language")
+        .eq("id", session.user.id)
+        .single();
+      if (langRow?.preferred_language) preferredLanguage = langRow.preferred_language as Language;
     } catch {
       // default to user / en
     }
